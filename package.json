@@ -1,0 +1,19 @@
+{
+  "name": "rvjs-dom-element",
+  "version": "0.1.0",
+  "description": "HTML Dom Element manipulations",
+  "main": "src/dom-element.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "html",
+    "dom"
+  ],
+  "dependencies": {
+    "rvjs-tools": "*",
+    "rvjs-dom": "*"
+  },
+  "author": "GoshaV [Maniako]",
+  "license": "MIT"
+}
