@@ -11,8 +11,8 @@
     "dom"
   ],
   "dependencies": {
-    "rvjs-tools": "*",
-    "rvjs-dom": "*"
+    "rvjs-dom": "*",
+    "rvjs-tools": "*"
   },
   "author": "GoshaV [Maniako]",
   "license": "MIT"
