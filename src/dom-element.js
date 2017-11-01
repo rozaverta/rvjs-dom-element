@@ -185,6 +185,11 @@ function HideDisplay(prop) {
 	return this;
 }
 
+var regDataName = /-([a-z])/g;
+var funcDataName = function funcDataName(m) {
+	return m[1].toUpperCase();
+};
+
 var DomElement = function () {
 	function DomElement(element) {
 		_classCallCheck(this, DomElement);
@@ -298,13 +303,36 @@ var DomElement = function () {
 		key: 'data',
 		value: function data(name, value) {
 			var element = this.element;
+			name = String(name).replace(regDataName, funcDataName);
+
 			if (arguments.length < 2) {
-				return element.dataset[name];
+				value = element.dataset[name];
+				if (value && value.length > 1 && value[value.length - 1] === '}') {
+					var from = value[0],
+					    to = from === '{' ? '}' : from === '[' ? ']' : false;
+					if (to && value[value.length - 1] === to) {
+						try {
+							value = JSON.parse(value);
+						} catch (e) {
+							console.log("Can't ready JSON data property: " + value);
+							value = from === '{' ? {} : [];
+						}
+					}
+				}
+				return value;
 			} else if (value === null) {
 				delete element.dataset[name];
 			} else {
+				if ((typeof value === 'undefined' ? 'undefined' : _typeof(value)) === "object") {
+					try {
+						value = JSON.stringify(value);
+					} catch (e) {
+						value = Array.isArray(value) ? '[]' : '{}';
+					}
+				}
 				element.dataset[name] = value;
 			}
+
 			return this;
 		}
 	}, {
