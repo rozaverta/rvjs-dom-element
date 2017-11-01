@@ -4,9 +4,9 @@ Object.defineProperty(exports, "__esModule", {
 	value: true
 });
 
-var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
-
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
 var _rvjsDom = require('rvjs-dom');
 
@@ -27,6 +27,8 @@ var EvnComposition = ['compositionstart', 'compositionupdate', 'compositionend']
 var EvnKey = ['keydown', 'keyup', 'keypress'];
 var EvnNew = true;
 
+var Noop = function Noop() {};
+
 try {
 	EvnNew = document.dispatchEvent(new Event('TestEvent'));
 } catch (e) {
@@ -36,16 +38,16 @@ try {
 function getEvent(name, prop, custom) {
 	var evn = null;
 	if (EvnNew) {
-		if (~EvnUi.indexOf(name)) evn = new UIEvent(name, prop);else if (~EvnFocus.indexOf(name)) evn = new FocusEvent(name, prop);else if (~EvnMouse.indexOf(name)) evn = new MouseEvent(name, prop);else if (name == 'wheel') evn = new WheelEvent(name, prop);else if (name == 'input' || name == 'beforeinput') evn = new InputEvent(name, prop);else if (~EvnKey.indexOf(name)) evn = new KeyboardEvent(name, prop);else if (~EvnComposition.indexOf(name)) evn = new CompositionEvent(name, prop);else if (custom) evn = new CustomEvent(name, prop);else evn = new Event(prop);
+		if (~EvnUi.indexOf(name)) evn = new UIEvent(name, prop);else if (~EvnFocus.indexOf(name)) evn = new FocusEvent(name, prop);else if (~EvnMouse.indexOf(name)) evn = new MouseEvent(name, prop);else if (name === 'wheel') evn = new WheelEvent(name, prop);else if (name === 'input' || name === 'beforeinput') evn = new InputEvent(name, prop);else if (~EvnKey.indexOf(name)) evn = new KeyboardEvent(name, prop);else if (~EvnComposition.indexOf(name)) evn = new CompositionEvent(name, prop);else if (custom) evn = new CustomEvent(name, prop);else evn = new Event(prop);
 	} else if (typeof document !== 'undefined') {
 		var getProp = function getProp(name, def) {
 			return prop.hasOwnProperty(name) ? prop[name] : def;
 		};
 
-		if (~EvnUi.indexOf(name) || ~EvnFocus.indexOf(name) || name == 'input' || name == 'beforeinput') {
+		if (~EvnUi.indexOf(name) || ~EvnFocus.indexOf(name) || name === 'input' || name === 'beforeinput') {
 			evn = document.createEvent('UIEvent');
 			evn.initUIEvent(name, getProp('bubbles', true), getProp('cancelable', true), getProp('view', null), getProp('detail', 0));
-		} else if (~EvnMouse.indexOf(name) || name == 'wheel') {
+		} else if (~EvnMouse.indexOf(name) || name === 'wheel') {
 			evn = document.createEvent('MouseEvent');
 			evn.initMouseEvent(name, getProp('bubbles', true), // всплывает?
 			getProp('cancelable', true), // можно отменить?
@@ -82,33 +84,123 @@ function getStyles(element) {
 	return view.getComputedStyle(element);
 }
 
-function Append(element, child) {
-	var type = _rvjsTools2.default.getType(child);
-	if (type === 'html-node') {
-		element.appendChild(child);
-	} else if (type === 'html-collection' || type === 'object' && child instanceof _rvjsDom.Collection) {
-		for (var i = 0, length = child.length; i < length; i++) {
-			element.appendChild(child[i]);
-		}
-	} else if (type === 'array') {
-		for (var _i = 0, _length = child.length; _i < _length; _i++) {
-			_rvjsTools2.default.isHtmlNodeElement(child[_i]) && element.appendChild(child[_i]);
+/**
+ * @return {boolean}
+ */
+function IsDuration(arg) {
+	return !isNaN(arg) && arg >= 0 && isFinite(arg);
+}
+
+function CheckPropDisplay(from, to, name, type) {
+	if (_typeof(from[name]) === type && (name !== 'duration' || IsDuration(from[name]))) {
+		to[name] = from[name];
+	}
+}
+
+function PropDisplay(prop, args, dir) {
+	if (prop.to > 0 && dir !== prop.dir) {
+		clearTimeout(prop.to);
+		prop.to = 0;
+	}
+
+	prop.duration = 0;
+	prop.complete = Noop;
+
+	if (args.length === 1 && _typeof(args[0]) === 'object') {
+		CheckPropDisplay(args[0], prop, 'complete', 'function');
+		CheckPropDisplay(args[0], prop, 'duration', 'number');
+		CheckPropDisplay(args[0], prop, 'name', 'string');
+	}
+
+	if (args.length > 0) {
+		for (var i = 0, arg, tof; i < args.length; i++) {
+			arg = args[i];
+			tof = typeof arg === 'undefined' ? 'undefined' : _typeof(arg);
+			if (tof === 'function') prop.complete = arg;else if (tof === 'number' && IsDuration(arg)) prop.duration = arg;else if (tof === 'string') prop.name = arg;
 		}
 	}
+
+	if (prop.duration > 0 && !prop.name) {
+		prop.name = 'in';
+	}
+}
+
+function CompleteDisplay(prop) {
+	prop.to = 0;
+	prop.dir = 0;
+	prop.complete(prop.self);
+	prop.complete = Noop;
+}
+
+function ShowDisplay(prop) {
+	for (var _len = arguments.length, args = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+		args[_key - 1] = arguments[_key];
+	}
+
+	PropDisplay(prop, args, 1);
+	if (prop.dir !== 1) {
+		if (prop.show === true) {
+			CompleteDisplay(prop);
+		} else {
+			var self = this;
+			prop.dir = 1;
+			self.element.style.display = prop.display;
+			if (prop.duration > 100) {
+				prop.to = setTimeout(function () {
+					self.className("+" + prop.name);
+					prop.to = setTimeout(function () {
+						CompleteDisplay(prop);
+					}, prop.duration - 100);
+				}, 100);
+			} else {
+				prop.to = setTimeout(function () {
+					prop.name && self.className("+" + prop.name);
+					CompleteDisplay(prop);
+				}, prop.duration);
+			}
+		}
+	}
+	return this;
+}
+
+function HideDisplay(prop) {
+	for (var _len2 = arguments.length, args = Array(_len2 > 1 ? _len2 - 1 : 0), _key2 = 1; _key2 < _len2; _key2++) {
+		args[_key2 - 1] = arguments[_key2];
+	}
+
+	PropDisplay(prop, args, -1);
+	if (prop.dir !== -1) {
+		if (prop.show === false) {
+			CompleteDisplay(prop);
+		} else {
+			var self = this;
+			prop.dir = -1;
+			prop.name && self.className("-" + prop.name);
+			prop.to = setTimeout(function () {
+				self.element.style.display = 'none';
+				CompleteDisplay(prop);
+			}, prop.duration);
+		}
+	}
+	return this;
 }
 
 var DomElement = function () {
 	function DomElement(element) {
 		_classCallCheck(this, DomElement);
 
-		var display = element.style.display || '',
-		    show = function show() {
-			element.style.display = display;
-			return this;
-		};
+		if (_rvjsTools2.default.isWindowElement(element)) {
+			element = window.document.documentElement;
+		} else if (element.nodeType === 9 && element.documentElement) {
+			element = element.documentElement;
+		}
 
-		if (display == 'none') {
+		var display = element.style.display || '',
+		    prop = { to: 0, dir: 0, show: null, self: this };
+
+		if (display === 'none') {
 			display = '';
+			prop.show = false;
 		}
 
 		if (!display) {
@@ -117,6 +209,9 @@ var DomElement = function () {
 				display = cssDisplay;
 			} else {
 				display = inline.indexOf((element.tagName || '').toUpperCase()) > 0 ? 'inline' : 'block';
+				if (cssDisplay === 'none') {
+					prop.show = false;
+				}
 			}
 		}
 
@@ -127,26 +222,49 @@ var DomElement = function () {
 			value: element
 		});
 
-		this.show = show.bind(this);
+		prop.display = display;
+		this.show = ShowDisplay.bind(this, prop);
+		this.hide = HideDisplay.bind(this, prop);
+		this.events = {};
 	}
 
 	_createClass(DomElement, [{
 		key: 'on',
-		value: function on(event, callback) {
+		value: function on(event, callback, name) {
 			_rvjsDom.Evn.add(this.element, event, callback);
+			if (arguments.length > 2) {
+				var tof = typeof name === 'undefined' ? 'undefined' : _typeof(name),
+				    evn = this.events;
+				if (tof === 'string' || tof === 'symbol') {
+					if (!evn[name]) {
+						evn[name] = [callback];
+					} else if (evn[name].indexOf(callback) < 0) {
+						evn[name].push(callback);
+					}
+				}
+			}
 			return this;
 		}
 	}, {
 		key: 'off',
 		value: function off(event, callback) {
-			_rvjsDom.Evn.remove(this.element, event, callback);
+			var _this = this;
+
+			var tof = typeof callback === 'undefined' ? 'undefined' : _typeof(callback);
+			if (tof === 'string' || tof === 'symbol') {
+				(this.events[callback] || []).forEach(function (remove) {
+					_rvjsDom.Evn.remove(_this.element, event, remove);
+				});
+			} else {
+				_rvjsDom.Evn.remove(this.element, event, callback);
+			}
 			return this;
 		}
 	}, {
 		key: 'dispatch',
 		value: function dispatch(event, prop) {
 			if ('dispatchEvent' in this.element) {
-				var custom = arguments.length > 1 && prop !== null && (typeof prop === 'undefined' ? 'undefined' : _typeof(prop)) != 'object',
+				var custom = arguments.length > 1 && prop !== null && (typeof prop === 'undefined' ? 'undefined' : _typeof(prop)) !== 'object',
 				    evn = void 0;
 
 				if (!custom) {
@@ -166,24 +284,26 @@ var DomElement = function () {
 	}, {
 		key: 'attr',
 		value: function attr(name, value) {
+			var element = this.element;
 			if (arguments.length < 2) {
-				return this.element.getAttribute(name);
+				return element.getAttribute(name);
 			} else if (value === null) {
-				this.element.removeAttribute(name);
+				element.removeAttribute(name);
 			} else {
-				this.element.setAttribute(name, value);
+				element.setAttribute(name, value);
 			}
 			return this;
 		}
 	}, {
 		key: 'data',
 		value: function data(name, value) {
+			var element = this.element;
 			if (arguments.length < 2) {
-				return this.element.dataset[name];
+				return element.dataset[name];
 			} else if (value === null) {
-				delete this.element.dataset[name];
+				delete element.dataset[name];
 			} else {
-				this.element.dataset[name] = value;
+				element.dataset[name] = value;
 			}
 			return this;
 		}
@@ -201,9 +321,7 @@ var DomElement = function () {
 		key: 'property',
 		value: function property(name, value) {
 			if (arguments.length < 2) {
-				try {
-					delete this.element[name];
-				} catch (e) {}
+				return this.element[name];
 			} else {
 				this.element[name] = value;
 			}
@@ -223,15 +341,9 @@ var DomElement = function () {
 			return this;
 		}
 	}, {
-		key: 'hide',
-		value: function hide() {
-			this.element.style.display = 'none';
-			return this;
-		}
-	}, {
 		key: 'style',
 		value: function style(name, value) {
-			if ((typeof name === 'undefined' ? 'undefined' : _typeof(name)) == 'object' && arguments.length < 2) {
+			if ((typeof name === 'undefined' ? 'undefined' : _typeof(name)) === 'object' && arguments.length < 2) {
 				for (var i = 0, keys = Object.keys(name), length = keys.length; i < length; i++) {
 					(0, _rvjsDom.Style)(this.element, keys[i], name[keys[i]]);
 				}
@@ -294,8 +406,8 @@ var DomElement = function () {
 						this.element.appendChild(child[i]);
 					}
 				} else if (type === 'array') {
-					for (var _i2 = 0, _length2 = child.length; _i2 < _length2; _i2++) {
-						_rvjsTools2.default.isHtmlNodeElement(child[_i2]) && this.element.appendChild(child[_i2]);
+					for (var _i = 0, _length = child.length; _i < _length; _i++) {
+						_rvjsTools2.default.isHtmlNodeElement(child[_i]) && this.element.appendChild(child[_i]);
 					}
 				}
 			}
