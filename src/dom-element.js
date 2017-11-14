@@ -198,6 +198,8 @@ var DomElement = function () {
 			element = window.document.documentElement;
 		} else if (element.nodeType === 9 && element.documentElement) {
 			element = element.documentElement;
+		} else if (!_rvjsTools2.default.isHtmlNodeElement(element)) {
+			element = _rvjsDom.Element.create(element);
 		}
 
 		var display = element.style.display || '',
