@@ -125,11 +125,12 @@ function PropDisplay(prop, args, dir) {
 	}
 }
 
-function CompleteDisplay(prop) {
+function CompleteDisplay(prop, show) {
 	prop.to = 0;
 	prop.dir = 0;
 	prop.complete(prop.self);
 	prop.complete = Noop;
+	prop.show = show;
 }
 
 function ShowDisplay(prop) {
@@ -140,7 +141,7 @@ function ShowDisplay(prop) {
 	PropDisplay(prop, args, 1);
 	if (prop.dir !== 1) {
 		if (prop.show === true) {
-			CompleteDisplay(prop);
+			CompleteDisplay(prop, true);
 		} else {
 			var self = this;
 			prop.dir = 1;
@@ -149,13 +150,13 @@ function ShowDisplay(prop) {
 				prop.to = setTimeout(function () {
 					self.className("+" + prop.name);
 					prop.to = setTimeout(function () {
-						CompleteDisplay(prop);
+						CompleteDisplay(prop, true);
 					}, prop.duration - 100);
 				}, 100);
 			} else {
 				prop.to = setTimeout(function () {
 					prop.name && self.className("+" + prop.name);
-					CompleteDisplay(prop);
+					CompleteDisplay(prop, true);
 				}, prop.duration);
 			}
 		}
@@ -171,14 +172,14 @@ function HideDisplay(prop) {
 	PropDisplay(prop, args, -1);
 	if (prop.dir !== -1) {
 		if (prop.show === false) {
-			CompleteDisplay(prop);
+			CompleteDisplay(prop, false);
 		} else {
 			var self = this;
 			prop.dir = -1;
 			prop.name && self.className("-" + prop.name);
 			prop.to = setTimeout(function () {
 				self.element.style.display = 'none';
-				CompleteDisplay(prop);
+				CompleteDisplay(prop, false);
 			}, prop.duration);
 		}
 	}
